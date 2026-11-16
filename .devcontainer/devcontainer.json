@@ -1,0 +1,8 @@
+{
+  "name": "jc-dev",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "jc-dev",
+  "workspaceFolder": "/work",
+  "remoteUser": "dev",
+  "shutdownAction": "none"
+}

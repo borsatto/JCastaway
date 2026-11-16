@@ -1,0 +1,21 @@
+# Original copyrighted Johnny Castaway files: NEVER commit
+/jc/
+/original/
+/assets/
+RESOURCE.MAP
+RESOURCE.001
+RESOURCE.00$
+SCRANTIC.SCR
+SCRANTIC.SC$
+*.WAV
+sound*.wav
+
+# Build
+/build*/
+/out/
+node_modules/
+
+# Ghidra / REA local state
+*.gpr
+*.rep/
+.rea/

@@ -1,0 +1,9 @@
+{
+  "name": "jc-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Helper scripts: unpack the original 1992 installer, verify data tables",
+  "dependencies": {
+    "node-pkware": "^6.0.0"
+  }
+}

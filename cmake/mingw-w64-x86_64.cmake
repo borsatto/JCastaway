@@ -1,0 +1,21 @@
+# Cross-compile for Windows x64 with MinGW-w64 (inside the jc-dev container).
+#   cmake -S . -B build-win64 -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(TOOLCHAIN_PREFIX x86_64-w64-mingw32)
+
+set(CMAKE_C_COMPILER   ${TOOLCHAIN_PREFIX}-gcc)
+set(CMAKE_RC_COMPILER  ${TOOLCHAIN_PREFIX}-windres)
+
+if(DEFINED ENV{SDL2_MINGW_DIR})
+  set(_sdl "$ENV{SDL2_MINGW_DIR}/${TOOLCHAIN_PREFIX}")
+else()
+  set(_sdl "/opt/sdl2-mingw/${TOOLCHAIN_PREFIX}")
+endif()
+
+set(CMAKE_FIND_ROOT_PATH /usr/${TOOLCHAIN_PREFIX} ${_sdl})
+set(CMAKE_PREFIX_PATH ${_sdl})
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
