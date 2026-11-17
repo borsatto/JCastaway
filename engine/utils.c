@@ -28,6 +28,10 @@
 #include <time.h>
 #include <sys/time.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "mytypes.h"
 
 
@@ -38,12 +42,17 @@ int debugMode = 0;
 void fatalError(char *message, ... )
 {
     va_list(args);
+    char buf[1024];
 
     va_start(args, message);
-    fprintf(stderr, "\n\n Fatal error : ");
-    vfprintf(stderr, message, args);
-    fprintf(stderr, "\n\n");
+    vsnprintf(buf, sizeof(buf), message, args);
     va_end(args);
+
+    fprintf(stderr, "\n\n Fatal error : %s\n\n", buf);
+
+#ifdef _WIN32
+    MessageBoxA(NULL, buf, "Johnny Castaway Error", MB_OK | MB_ICONERROR);
+#endif
 
     exit(1);
 }

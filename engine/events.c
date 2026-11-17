@@ -53,17 +53,24 @@ static void eventsProcessEvents()
 
             case SDL_MOUSEMOTION:
                 if (evScreensaverMode) {
-                    if (initialMouseX < 0) {
+                    uint32 now = SDL_GetTicks();
+                    if (now - startTicks < 1500) {
+                        // Startup grace period: continuously track mouse pos until window settles
                         initialMouseX = event.motion.x;
                         initialMouseY = event.motion.y;
                     }
-                    // Grace period of 500ms and 15px threshold to prevent jitter exits
-                    else if (SDL_GetTicks() - startTicks > 500) {
-                        int dx = abs(event.motion.x - initialMouseX);
-                        int dy = abs(event.motion.y - initialMouseY);
-                        if (dx > 15 || dy > 15) {
-                            graphicsEnd();
-                            exit(0);
+                    else {
+                        if (initialMouseX < 0) {
+                            initialMouseX = event.motion.x;
+                            initialMouseY = event.motion.y;
+                        }
+                        else {
+                            int dx = abs(event.motion.x - initialMouseX);
+                            int dy = abs(event.motion.y - initialMouseY);
+                            if (dx > 25 || dy > 25) {
+                                graphicsEnd();
+                                exit(0);
+                            }
                         }
                     }
                 }
@@ -71,7 +78,7 @@ static void eventsProcessEvents()
 
             case SDL_MOUSEBUTTONDOWN:
                 if (evScreensaverMode) {
-                    if (SDL_GetTicks() - startTicks > 300) {
+                    if (SDL_GetTicks() - startTicks > 1000) {
                         graphicsEnd();
                         exit(0);
                     }
@@ -79,6 +86,13 @@ static void eventsProcessEvents()
                 break;
 
             case SDL_KEYDOWN:
+                if (evScreensaverMode) {
+                    if (SDL_GetTicks() - startTicks > 1000) {
+                        graphicsEnd();
+                        exit(0);
+                    }
+                    break;
+                }
 
                 if (evHotKeysEnabled) {
 

@@ -42,6 +42,7 @@ add_executable(johnny engine/jc_reborn.c)
 target_link_libraries(johnny PRIVATE jcengine)
 
 if(WIN32)
+  target_sources(johnny PRIVATE windows/JohnnyCastaway.rc)
   if(TARGET SDL2::SDL2main)
     target_link_libraries(johnny PRIVATE SDL2::SDL2main)
   endif()
