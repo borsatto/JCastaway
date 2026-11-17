@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-project(JohnnyCastaway C)
+project(JohnnyCastaway C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(JC_STATIC_SDL "Link SDL2 statically (default ON for Windows)" ${WIN32})
 
@@ -21,11 +23,12 @@ set(ENGINE_SOURCES
   engine/respath.c
   engine/sound.c engine/story.c engine/ttm.c engine/uncompress.c engine/utils.c
   engine/walk.c
+  engine/xbrz/xbrz.cpp engine/xbrz/xbrz_bridge.cpp
 )
 
 add_library(jcengine STATIC ${ENGINE_SOURCES})
 target_link_libraries(jcengine PUBLIC ${JC_SDL_TARGET})
-target_include_directories(jcengine PUBLIC engine)
+target_include_directories(jcengine PUBLIC engine engine/xbrz)
 # The engine includes <SDL2/SDL.h>: also expose the parent of SDL's include dir.
 get_target_property(_sdl_inc ${JC_SDL_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
 foreach(_d IN LISTS _sdl_inc)
@@ -48,7 +51,7 @@ if(WIN32)
   endif()
   set_target_properties(johnny PROPERTIES WIN32_EXECUTABLE ON OUTPUT_NAME "JohnnyCastaway" SUFFIX ".scr")
   if(MINGW)
-    target_link_options(johnny PRIVATE -static -static-libgcc)
+    target_link_options(johnny PRIVATE -static -static-libgcc -static-libstdc++)
   endif()
 endif()
 

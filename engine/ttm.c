@@ -201,7 +201,7 @@ void ttmPlay(struct TTtmThread *ttmThread)     // TODO
 
             case 0x1021:
                 debugMsg("    SET_DELAY %d", args[0]);
-                ttmThread->timer = ttmThread->delay = (args[0] > 4 ? args[0] : 4);  // TODO ?
+                ttmThread->timer = ttmThread->delay = (args[0] > 0 ? args[0] : 1);
                 break;
 
             case 0x1051:

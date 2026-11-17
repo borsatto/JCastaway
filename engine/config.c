@@ -34,27 +34,22 @@
 
 static char *cfgFullPath()
 {
-    char *home;
-    static char *result = NULL;
+    static char result[512] = "";
 
-
-    if (result == NULL) {
-
-        home = getenv("HOME");
-
-        if (home != NULL) {
-            if (strlen(home)) {
-                result = safe_malloc(strlen(home) + strlen(CFG_FILENAME) + 2);
-                strcpy(result, home);
-                strcat(result, "/");
-                strcat(result, CFG_FILENAME);
-            }
+    if (result[0] == '\0') {
+#ifdef _WIN32
+        const char *appData = getenv("APPDATA");
+        if (appData && *appData) {
+            snprintf(result, sizeof(result), "%s\\JohnnyCastaway\\%s", appData, CFG_FILENAME);
+            return result;
         }
-
-        if (result == NULL) {
-            result = safe_malloc(strlen(CFG_FILENAME) + 1);
-            strcpy(result, CFG_FILENAME);
+#endif
+        const char *home = getenv("HOME");
+        if (home && *home) {
+            snprintf(result, sizeof(result), "%s/%s", home, CFG_FILENAME);
+            return result;
         }
+        snprintf(result, sizeof(result), "%s", CFG_FILENAME);
     }
 
     return result;

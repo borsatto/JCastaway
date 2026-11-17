@@ -31,6 +31,7 @@
 #include "graphics.h"
 #include "resource.h"
 #include "events.h"
+#include "xbrz_bridge.h"
 
 
 static SDL_Window *sdl_window;
@@ -47,10 +48,14 @@ int grDx = 0;
 int grDy = 0;
 int grWindowed = 0;
 int grUpdateDelay = 0;
+int grSmoothFilter = 1;
+int grXbrzFactor = 3; // Default 3x xBRZ: 1920x1440 Full HD crisp upscaling
 void *grParentHwnd = NULL;
 void (*jcFrameHook)(const uint8_t *rgbaPixels, int width, int height, int pitch) = NULL;
 volatile int jcEngineStopRequested = 0;
 static SDL_Surface *grCompositeSfc = NULL;
+static SDL_Renderer *sdl_renderer = NULL;
+static SDL_Texture *sdl_texture = NULL;
 
 
 static void grReleaseScreen()
@@ -122,10 +127,6 @@ void graphicsInit()
         sdl_window = SDL_CreateWindowFrom(grParentHwnd);
         if (sdl_window == NULL)
             fatalError("Could not create window from HWND %p: %s", grParentHwnd, SDL_GetError());
-        int w = 640, h = 480;
-        SDL_GetWindowSize(sdl_window, &w, &h);
-        grScreenOrigin.x = (w > 640) ? (w - 640) / 2 : 0;
-        grScreenOrigin.y = (h > 480) ? (h - 480) / 2 : 0;
     }
     else if (grWindowed) {
         sdl_window = SDL_CreateWindow(
@@ -136,8 +137,6 @@ void graphicsInit()
             SCREEN_HEIGHT,
             0
         );
-        grScreenOrigin.x = 0;
-        grScreenOrigin.y = 0;
     }
     else {
         // Fullscreen Desktop preserves display resolution and avoids mode-switching artifacts
@@ -149,21 +148,38 @@ void graphicsInit()
             0,
             SDL_WINDOW_FULLSCREEN_DESKTOP
         );
-        if (sdl_window != NULL) {
-            int w = 640, h = 480;
-            SDL_GetWindowSize(sdl_window, &w, &h);
-            grScreenOrigin.x = (w > 640) ? (w - 640) / 2 : 0;
-            grScreenOrigin.y = (h > 480) ? (h - 480) / 2 : 0;
-            SDL_Surface *ws = SDL_GetWindowSurface(sdl_window);
-            if (ws) SDL_FillRect(ws, NULL, SDL_MapRGB(ws->format, 0, 0, 0));
-        }
         SDL_ShowCursor(SDL_DISABLE);
     }
 
     if (sdl_window == NULL)
         fatalError("Could not create window: %s", SDL_GetError());
 
-    SDL_UpdateWindowSurface(sdl_window);
+    // Determine logical rendering size (xBRZ upscaled or native)
+    int renderWidth = 640;
+    int renderHeight = 480;
+    if (grXbrzFactor >= 2 && grXbrzFactor <= 6) {
+        renderWidth = 640 * grXbrzFactor;
+        renderHeight = 480 * grXbrzFactor;
+    } else {
+        grXbrzFactor = 1;
+    }
+
+    // Hardware accelerated renderer with upscale filtering
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, grSmoothFilter ? "1" : "0");
+    sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED);
+    if (sdl_renderer == NULL) {
+        sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_SOFTWARE);
+    }
+    if (sdl_renderer != NULL) {
+        SDL_RenderSetLogicalSize(sdl_renderer, renderWidth, renderHeight);
+        sdl_texture = SDL_CreateTexture(sdl_renderer,
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            renderWidth, renderHeight);
+        SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 255);
+        SDL_RenderClear(sdl_renderer);
+        SDL_RenderPresent(sdl_renderer);
+    }
 
     grLoadPalette(palResources[0]);  // TODO ?
 
@@ -179,6 +195,14 @@ void graphicsEnd()
         SDL_FreeSurface(grCompositeSfc);
         grCompositeSfc = NULL;
     }
+    if (sdl_texture != NULL) {
+        SDL_DestroyTexture(sdl_texture);
+        sdl_texture = NULL;
+    }
+    if (sdl_renderer != NULL) {
+        SDL_DestroyRenderer(sdl_renderer);
+        sdl_renderer = NULL;
+    }
     if (sdl_window != NULL) {
         SDL_DestroyWindow(sdl_window);
         sdl_window = NULL;
@@ -189,7 +213,14 @@ void graphicsEnd()
 
 void grRefreshDisplay()
 {
-    SDL_UpdateWindowSurface(sdl_window);
+    if (sdl_renderer != NULL && sdl_texture != NULL) {
+        SDL_RenderClear(sdl_renderer);
+        SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+        SDL_RenderPresent(sdl_renderer);
+    }
+    else if (sdl_window != NULL) {
+        SDL_UpdateWindowSurface(sdl_window);
+    }
 }
 
 
@@ -241,10 +272,34 @@ void grUpdateDisplay(struct TTtmThread *ttmBackgroundThread,
         jcFrameHook((const uint8_t*)grCompositeSfc->pixels, 640, 480, grCompositeSfc->pitch);
     }
 
-    // Refresh SDL window if active
-    if (sdl_window != NULL) {
+    // Render to SDL display
+    if (sdl_renderer != NULL && sdl_texture != NULL && grCompositeSfc != NULL) {
+        if (grXbrzFactor >= 2 && grXbrzFactor <= 6) {
+            static uint32_t *xbrzBuffer = NULL;
+            static int lastAllocFactor = 0;
+            int rw = 640 * grXbrzFactor;
+            int rh = 480 * grXbrzFactor;
+            if (xbrzBuffer == NULL || lastAllocFactor != grXbrzFactor) {
+                free(xbrzBuffer);
+                xbrzBuffer = (uint32_t*)malloc(rw * rh * sizeof(uint32_t));
+                lastAllocFactor = grXbrzFactor;
+            }
+            if (xbrzBuffer != NULL) {
+                jcApplyXbrz(grXbrzFactor, (const uint32_t*)grCompositeSfc->pixels,
+                            xbrzBuffer, 640, 480);
+                SDL_UpdateTexture(sdl_texture, NULL, xbrzBuffer, rw * sizeof(uint32_t));
+            }
+        }
+        else {
+            SDL_UpdateTexture(sdl_texture, NULL, grCompositeSfc->pixels, grCompositeSfc->pitch);
+        }
+        SDL_RenderClear(sdl_renderer);
+        SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+        SDL_RenderPresent(sdl_renderer);
+    }
+    else if (sdl_window != NULL) {
         SDL_Surface *ws = SDL_GetWindowSurface(sdl_window);
-        if (ws != NULL) {
+        if (ws != NULL && grCompositeSfc != NULL) {
             SDL_BlitSurface(grCompositeSfc, NULL, ws, &grScreenOrigin);
             SDL_UpdateWindowSurface(sdl_window);
         }

@@ -58,6 +58,19 @@ static struct TStoryScene *storyPickScene(
         }
     }
 
+    if (numScenes == 0) {
+        // Fallback: relax constraints if no scene matches exact day/flags
+        for (int i=0; i < NUM_SCENES; i++) {
+            if ((storyScenes[i].flags & wantedFlags) == wantedFlags) {
+                scenes[numScenes++] = i;
+            }
+        }
+    }
+
+    if (numScenes == 0) {
+        return &storyScenes[0];
+    }
+
     return &storyScenes[scenes[rand() % numScenes]];
 }
 

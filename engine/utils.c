@@ -203,35 +203,31 @@ void hexdump(uint8 *data, uint32 len)
 
 int getDayOfYear()
 {
-    struct timeval tv;
-    struct tm *localTime;
-
-    gettimeofday(&tv, NULL);
-    localTime = localtime(&tv.tv_sec);
-    return localTime->tm_yday;
+    time_t t = time(NULL);
+    struct tm *localTime = localtime(&t);
+    return localTime ? localTime->tm_yday : 0;
 }
 
 
 int getHour()
 {
-    struct timeval tv;
-    struct tm *localTime;
-
-    gettimeofday(&tv, NULL);
-    localTime = localtime(&tv.tv_sec);
-    return localTime->tm_hour;
+    time_t t = time(NULL);
+    struct tm *localTime = localtime(&t);
+    return localTime ? localTime->tm_hour : 12;
 }
 
 
 char *getMonthAndDay()
 {
-    struct timeval tv;
-    struct tm *localTime;
+    time_t t = time(NULL);
+    struct tm *localTime = localtime(&t);
     static char result[5];
 
-    gettimeofday(&tv, NULL);
-    localTime = localtime(&tv.tv_sec);
-    strftime(result, 5, "%m%d", localTime);
+    if (localTime) {
+        strftime(result, 5, "%m%d", localTime);
+    } else {
+        strcpy(result, "0101");
+    }
     return result;
 }
 

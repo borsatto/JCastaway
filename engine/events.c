@@ -40,7 +40,7 @@ static int initialMouseY = -1;
 
 int evHotKeysEnabled = 0;
 int evScreensaverMode = 0;
-int evTickDurationMs = 55; // 18.2 Hz DOS timer default from SCRANTIC.SCR reverse engineering
+int evTickDurationMs = 16; // 16ms per tick (~60Hz), perfectly smooth animations
 
 
 static void eventsProcessEvents()
@@ -163,7 +163,7 @@ void eventsWaitTick(uint16 delay)
 
     while (!jcEngineStopRequested && ((paused && !oneFrame)
             || (!maxSpeed && (SDL_GetTicks() - lastTicks < delay)))) {
-        SDL_Delay(5);
+        SDL_Delay(1);
         eventsProcessEvents();
     }
 

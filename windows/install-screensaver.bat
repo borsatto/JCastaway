@@ -27,18 +27,23 @@ if not exist "%SCR_SRC%" (
     exit /b 1
 )
 
-:: 2. Copia o .scr para System32 (onde o desk.cpl do Windows descobre os screensavers)
+:: 2. Encerra qualquer instancia em execucao (ex: preview do Windows) para liberar o arquivo
+echo [*] Fechando instancias ativas do JohnnyCastaway...
+taskkill /F /IM JohnnyCastaway.scr >nul 2>&1
+timeout /t 1 /nobreak >nul
+
+:: 3. Copia o .scr para System32 (onde o desk.cpl do Windows descobre os screensavers)
 echo [*] Instalando JohnnyCastaway.scr em:
 echo     %SYS32_DEST%
 copy /Y "%SCR_SRC%" "%SYS32_DEST%" >nul
 if errorlevel 1 (
-    echo [!] Falha ao copiar para System32.
+    echo [!] Falha ao copiar para System32. Certifique-se de que a janela de Protecao de Tela do Windows esta fechada.
     pause
     exit /b 1
 )
 echo [OK] Executavel instalado em System32!
 
-:: 3. Copia os recursos para %APPDATA%\JohnnyCastaway
+:: 4. Copia os recursos para %APPDATA%\JohnnyCastaway
 echo.
 if not exist "%APP_DATA%" mkdir "%APP_DATA%"
 

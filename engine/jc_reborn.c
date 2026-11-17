@@ -160,8 +160,25 @@ static void parseArgs(int argc, char **argv)
             else if (!strcmp(argv[i], "--assets-dir") || !strcmp(argv[i], "-a")) {
                 if (i + 1 < argc) setAssetDir(argv[++i]);
             }
-            else if (!strcmp(argv[i], "--tick-ms")) {
+            else if (!strcmp(argv[i], "--tick-ms") || !strcmp(argv[i], "--speed")) {
                 if (i + 1 < argc) evTickDurationMs = atoi(argv[++i]);
+            }
+            else if (!strcmp(argv[i], "--xbrz")) {
+                if (i + 1 < argc && argv[i+1][0] >= '2' && argv[i+1][0] <= '6') {
+                    grXbrzFactor = atoi(argv[++i]);
+                } else {
+                    grXbrzFactor = 3; // Default 3x (1920x1440 Full HD)
+                }
+            }
+            else if (!strcmp(argv[i], "--no-xbrz")) {
+                grXbrzFactor = 1;
+            }
+            else if (!strcmp(argv[i], "--smooth")) {
+                grSmoothFilter = 1;
+            }
+            else if (!strcmp(argv[i], "--retro") || !strcmp(argv[i], "--pixel")) {
+                grSmoothFilter = 0;
+                grXbrzFactor = 1;
             }
             else if (!strcmp(argv[i], "help") || !strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
                 usage();
