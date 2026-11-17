@@ -8,6 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(JC_STATIC_SDL "Link SDL2 statically (default ON for Windows)" ${WIN32})
 
+if(APPLE)
+  list(APPEND CMAKE_PREFIX_PATH "/usr/local" "/opt/homebrew" "/usr/local/opt/sdl2" "/opt/homebrew/opt/sdl2" "/opt/local")
+endif()
+
 find_package(SDL2 REQUIRED CONFIG)
 
 # Pick SDL target
