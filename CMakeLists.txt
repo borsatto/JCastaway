@@ -18,6 +18,7 @@ endif()
 set(ENGINE_SOURCES
   engine/ads.c engine/bench.c engine/calcpath.c engine/config.c engine/dump.c
   engine/events.c engine/graphics.c engine/island.c engine/resource.c
+  engine/respath.c
   engine/sound.c engine/story.c engine/ttm.c engine/uncompress.c engine/utils.c
   engine/walk.c
 )
@@ -48,6 +49,25 @@ if(WIN32)
   if(MINGW)
     target_link_options(johnny PRIVATE -static -static-libgcc)
   endif()
+endif()
+
+if(APPLE)
+  enable_language(OBJC)
+  add_library(JohnnyCastawaySaver MODULE
+    macos/JohnnyCastawayView.m
+  )
+  target_link_libraries(JohnnyCastawaySaver PRIVATE
+    jcengine
+    "-framework ScreenSaver"
+    "-framework Cocoa"
+    "-framework CoreGraphics"
+  )
+  set_target_properties(JohnnyCastawaySaver PROPERTIES
+    BUNDLE TRUE
+    OUTPUT_NAME "JohnnyCastaway"
+    BUNDLE_EXTENSION "saver"
+    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist"
+  )
 endif()
 
 # --- Tools ---------------------------------------------------------------------------

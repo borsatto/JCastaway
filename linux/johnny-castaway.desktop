@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Johnny Castaway
+Comment=Johnny Castaway Screensaver
+Exec=johnny
+Icon=johnny-castaway
+Terminal=false
+Categories=Screensaver;Game;
+Actions=Screensaver;
+
+[Desktop Action Screensaver]
+Name=Launch Screensaver
+Exec=johnny -s

@@ -14,6 +14,8 @@ sound*.wav
 /build*/
 /out/
 node_modules/
+*.scr
+*.png
 
 # Ghidra / REA local state
 *.gpr

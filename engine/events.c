@@ -31,11 +31,16 @@
 
 
 static uint32 lastTicks = 0x00ffffff;
+static uint32 startTicks = 0;
 static int paused   = 0;
 static int maxSpeed = 0;
 static int oneFrame = 0;
+static int initialMouseX = -1;
+static int initialMouseY = -1;
 
 int evHotKeysEnabled = 0;
+int evScreensaverMode = 0;
+int evTickDurationMs = 55; // 18.2 Hz DOS timer default from SCRANTIC.SCR reverse engineering
 
 
 static void eventsProcessEvents()
@@ -45,6 +50,33 @@ static void eventsProcessEvents()
     while (SDL_PollEvent(&event)) {
 
         switch(event.type) {
+
+            case SDL_MOUSEMOTION:
+                if (evScreensaverMode) {
+                    if (initialMouseX < 0) {
+                        initialMouseX = event.motion.x;
+                        initialMouseY = event.motion.y;
+                    }
+                    // Grace period of 500ms and 15px threshold to prevent jitter exits
+                    else if (SDL_GetTicks() - startTicks > 500) {
+                        int dx = abs(event.motion.x - initialMouseX);
+                        int dy = abs(event.motion.y - initialMouseY);
+                        if (dx > 15 || dy > 15) {
+                            graphicsEnd();
+                            exit(0);
+                        }
+                    }
+                }
+                break;
+
+            case SDL_MOUSEBUTTONDOWN:
+                if (evScreensaverMode) {
+                    if (SDL_GetTicks() - startTicks > 300) {
+                        graphicsEnd();
+                        exit(0);
+                    }
+                }
+                break;
 
             case SDL_KEYDOWN:
 
@@ -72,7 +104,7 @@ static void eventsProcessEvents()
 
                         case SDLK_ESCAPE:
                             graphicsEnd();
-                            exit(255);
+                            exit(0);
                             break;
                     }
                 }
@@ -80,7 +112,7 @@ static void eventsProcessEvents()
                     // Normal behaviour : no hot keys, the screen saver
                     // terminates if any key is pressed
                     graphicsEnd();
-                    exit(255);
+                    exit(0);
                 }
                 break;
 
@@ -90,7 +122,7 @@ static void eventsProcessEvents()
 
             case SDL_QUIT:
                 graphicsEnd();
-                exit(255);
+                exit(0);
                 break;
         }
     }
@@ -99,19 +131,24 @@ static void eventsProcessEvents()
 
 void eventsInit()
 {
-    lastTicks = SDL_GetTicks();
+    startTicks = SDL_GetTicks();
+    lastTicks = startTicks;
+    initialMouseX = -1;
+    initialMouseY = -1;
 }
 
 
 void eventsWaitTick(uint16 delay)
 {
-    delay *= 20;
+    if (jcEngineStopRequested) return;
+
+    delay *= evTickDurationMs;
     oneFrame = 0;
 
     eventsProcessEvents();
 
-    while ((paused && !oneFrame)
-            || (!maxSpeed && (SDL_GetTicks() - lastTicks < delay))) {
+    while (!jcEngineStopRequested && ((paused && !oneFrame)
+            || (!maxSpeed && (SDL_GetTicks() - lastTicks < delay)))) {
         SDL_Delay(5);
         eventsProcessEvents();
     }

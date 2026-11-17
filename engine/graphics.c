@@ -47,6 +47,10 @@ int grDx = 0;
 int grDy = 0;
 int grWindowed = 0;
 int grUpdateDelay = 0;
+void *grParentHwnd = NULL;
+void (*jcFrameHook)(const uint8_t *rgbaPixels, int width, int height, int pitch) = NULL;
+volatile int jcEngineStopRequested = 0;
+static SDL_Surface *grCompositeSfc = NULL;
 
 
 static void grReleaseScreen()
@@ -114,23 +118,50 @@ void graphicsInit()
 {
     SDL_Init(SDL_INIT_VIDEO);
 
-    sdl_window = SDL_CreateWindow(
-        "Johnny Reborn ...?",
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT,
-        (grWindowed ? 0 : SDL_WINDOW_FULLSCREEN)
-    );
+    if (grParentHwnd != NULL) {
+        sdl_window = SDL_CreateWindowFrom(grParentHwnd);
+        if (sdl_window == NULL)
+            fatalError("Could not create window from HWND %p: %s", grParentHwnd, SDL_GetError());
+        int w = 640, h = 480;
+        SDL_GetWindowSize(sdl_window, &w, &h);
+        grScreenOrigin.x = (w > 640) ? (w - 640) / 2 : 0;
+        grScreenOrigin.y = (h > 480) ? (h - 480) / 2 : 0;
+    }
+    else if (grWindowed) {
+        sdl_window = SDL_CreateWindow(
+            "Johnny Castaway",
+            SDL_WINDOWPOS_CENTERED,
+            SDL_WINDOWPOS_CENTERED,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            0
+        );
+        grScreenOrigin.x = 0;
+        grScreenOrigin.y = 0;
+    }
+    else {
+        // Fullscreen Desktop preserves display resolution and avoids mode-switching artifacts
+        sdl_window = SDL_CreateWindow(
+            "Johnny Castaway",
+            SDL_WINDOWPOS_CENTERED,
+            SDL_WINDOWPOS_CENTERED,
+            0,
+            0,
+            SDL_WINDOW_FULLSCREEN_DESKTOP
+        );
+        if (sdl_window != NULL) {
+            int w = 640, h = 480;
+            SDL_GetWindowSize(sdl_window, &w, &h);
+            grScreenOrigin.x = (w > 640) ? (w - 640) / 2 : 0;
+            grScreenOrigin.y = (h > 480) ? (h - 480) / 2 : 0;
+            SDL_Surface *ws = SDL_GetWindowSurface(sdl_window);
+            if (ws) SDL_FillRect(ws, NULL, SDL_MapRGB(ws->format, 0, 0, 0));
+        }
+        SDL_ShowCursor(SDL_DISABLE);
+    }
 
     if (sdl_window == NULL)
         fatalError("Could not create window: %s", SDL_GetError());
-
-    grScreenOrigin.x = (SCREEN_WIDTH - 640) / 2;
-    grScreenOrigin.y = (SCREEN_HEIGHT - 480) / 2;
-
-    if (!grWindowed)
-        SDL_ShowCursor(SDL_DISABLE);
 
     SDL_UpdateWindowSurface(sdl_window);
 
@@ -144,7 +175,14 @@ void graphicsInit()
 
 void graphicsEnd()
 {
-    SDL_DestroyWindow(sdl_window);
+    if (grCompositeSfc != NULL) {
+        SDL_FreeSurface(grCompositeSfc);
+        grCompositeSfc = NULL;
+    }
+    if (sdl_window != NULL) {
+        SDL_DestroyWindow(sdl_window);
+        sdl_window = NULL;
+    }
     SDL_Quit();
 }
 
@@ -176,42 +214,44 @@ void grUpdateDisplay(struct TTtmThread *ttmBackgroundThread,
                      struct TTtmThread *ttmThreads,
                      struct TTtmThread *ttmHolidayThread)
 {
+    if (grCompositeSfc == NULL) {
+        grCompositeSfc = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 32,
+            0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+    }
+
     // Blit the background
     if (grBackgroundSfc != NULL)
-        SDL_BlitSurface(grBackgroundSfc,
-                        NULL,
-                        SDL_GetWindowSurface(sdl_window),
-                        &grScreenOrigin);
+        SDL_BlitSurface(grBackgroundSfc, NULL, grCompositeSfc, NULL);
 
     // If not NULL, blit the optional layer of saved zones
     if (grSavedZonesLayer != NULL)
-        SDL_BlitSurface(grSavedZonesLayer,
-                        NULL,
-                        SDL_GetWindowSurface(sdl_window),
-                        &grScreenOrigin);
-
+        SDL_BlitSurface(grSavedZonesLayer, NULL, grCompositeSfc, NULL);
 
     // Blit successively each thread's layer
     for (int i=0; i < MAX_TTM_THREADS; i++)
         if (ttmThreads[i].isRunning)
-            SDL_BlitSurface(ttmThreads[i].ttmLayer,
-                            NULL,
-                            SDL_GetWindowSurface(sdl_window),
-                            &grScreenOrigin);
+            SDL_BlitSurface(ttmThreads[i].ttmLayer, NULL, grCompositeSfc, NULL);
 
     // Finally, blit the holiday layer
-    if (ttmHolidayThread != NULL)
-        if (ttmHolidayThread->isRunning)
-            SDL_BlitSurface(ttmHolidayThread->ttmLayer,
-                            NULL,
-                            SDL_GetWindowSurface(sdl_window),
-                            &grScreenOrigin);
+    if (ttmHolidayThread != NULL && ttmHolidayThread->isRunning)
+        SDL_BlitSurface(ttmHolidayThread->ttmLayer, NULL, grCompositeSfc, NULL);
+
+    // Notify external frame hook if present (macOS ScreenSaverView)
+    if (jcFrameHook != NULL && grCompositeSfc != NULL) {
+        jcFrameHook((const uint8_t*)grCompositeSfc->pixels, 640, 480, grCompositeSfc->pitch);
+    }
+
+    // Refresh SDL window if active
+    if (sdl_window != NULL) {
+        SDL_Surface *ws = SDL_GetWindowSurface(sdl_window);
+        if (ws != NULL) {
+            SDL_BlitSurface(grCompositeSfc, NULL, ws, &grScreenOrigin);
+            SDL_UpdateWindowSurface(sdl_window);
+        }
+    }
 
     // Wait for the tick ...
     eventsWaitTick(grUpdateDelay);
-
-    // ... and refresh the display
-    SDL_UpdateWindowSurface(sdl_window);
 }
 
 

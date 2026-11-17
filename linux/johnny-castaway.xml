@@ -1,0 +1,9 @@
+<screensaver name="johnny-castaway" _label="Johnny Castaway">
+  <command arg="-window-id"/>
+  <_description>
+Screen Antics: Johnny Castaway screensaver by Sierra/Dynamix (1992).
+Open-source recreation using SDL2.
+
+Requires RESOURCE.MAP and RESOURCE.001 in ~/.local/share/johnny-castaway/
+  </_description>
+</screensaver>

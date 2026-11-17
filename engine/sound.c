@@ -27,6 +27,7 @@
 #include "mytypes.h"
 #include "utils.h"
 #include "sound.h"
+#include "respath.h"
 
 
 #define NUM_OF_SOUNDS  25
@@ -79,14 +80,14 @@ void soundInit()
 
     for (int i=0; i < NUM_OF_SOUNDS; i++) {
 
-        char filename[20];
-
+        char filename[32];
         sprintf(filename, "sound%d.wav", i);
+        const char *resolved = resolveAssetPath(filename);
 
-        if (SDL_LoadWAV(filename, &audioSpec, &sounds[i].data, &sounds[i].length) == NULL) {
+        if (SDL_LoadWAV(resolved, &audioSpec, &sounds[i].data, &sounds[i].length) == NULL) {
             sounds[i].data   = NULL;
             sounds[i].length = 0;
-            debugMsg("SDL_LoadWAV() warning: %s", SDL_GetError());
+            debugMsg("SDL_LoadWAV() warning: %s (%s)", SDL_GetError(), resolved);
         }
     }
 

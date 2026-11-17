@@ -76,6 +76,9 @@ extern int grDx;
 extern int grDy;
 extern int grWindowed;
 extern int grUpdateDelay;
+extern void *grParentHwnd;
+extern void (*jcFrameHook)(const uint8_t *rgbaPixels, int width, int height, int pitch);
+extern volatile int jcEngineStopRequested;
 
 
 void graphicsInit();

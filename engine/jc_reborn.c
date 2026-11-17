@@ -24,10 +24,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "mytypes.h"
 #include "utils.h"
 #include "resource.h"
+#include "respath.h"
 #include "dump.h"
 #include "graphics.h"
 #include "events.h"
@@ -89,6 +95,29 @@ static void version()
 }
 
 
+static void showConfigDialog(void)
+{
+#ifdef _WIN32
+    MessageBoxA(NULL,
+        "Johnny Castaway Screensaver\n\n"
+        "Assets necessarios: RESOURCE.MAP e RESOURCE.001\n"
+        "Podem ser colocados em:\n"
+        "  - %APPDATA%\\JohnnyCastaway\\\n"
+        "  - Mesma pasta do JohnnyCastaway.scr\n\n"
+        "Em modo interativo (janela):\n"
+        "  Esc        : Sair\n"
+        "  Alt+Return : Alternar tela cheia\n"
+        "  Espaco     : Pausar/Continuar\n"
+        "  M          : Velocidade maxima",
+        "Johnny Castaway Settings",
+        MB_OK | MB_ICONINFORMATION);
+#else
+    printf("Johnny Castaway Screensaver\n"
+           "Configure assets in ~/.local/share/johnny-castaway/ or via JC_ASSETS_DIR.\n");
+#endif
+    exit(0);
+}
+
 static void parseArgs(int argc, char **argv)
 {
     int numExpectedArgs = 0;
@@ -100,10 +129,44 @@ static void parseArgs(int argc, char **argv)
             numExpectedArgs--;
         }
         else {
-            if (!strcmp(argv[i], "help")) {
+            // Screensaver flags (Windows /s, /c, /p)
+            if (!strcasecmp(argv[i], "/s") || !strcasecmp(argv[i], "-s")) {
+                evScreensaverMode = 1;
+                grWindowed = 0;
+            }
+            else if (!strncasecmp(argv[i], "/c", 2) || !strncasecmp(argv[i], "-c", 2)) {
+                showConfigDialog();
+            }
+            else if (!strncasecmp(argv[i], "/p", 2) || !strncasecmp(argv[i], "-p", 2)) {
+                const char *hwndStr = NULL;
+                if (argv[i][2] == ':') {
+                    hwndStr = &argv[i][3];
+                } else if (i + 1 < argc && argv[i+1][0] != '/' && argv[i+1][0] != '-') {
+                    hwndStr = argv[++i];
+                }
+                if (hwndStr) {
+                    uintptr_t hwndVal = (uintptr_t)strtoull(hwndStr, NULL, 10);
+                    grParentHwnd = (void*)hwndVal;
+                    soundDisabled = 1;
+                }
+                evScreensaverMode = 1;
+            }
+            else if (!strcmp(argv[i], "-window-id")) {
+                if (i + 1 < argc) {
+                    SDL_setenv("SDL_WINDOWID", argv[++i], 1);
+                    evScreensaverMode = 1;
+                }
+            }
+            else if (!strcmp(argv[i], "--assets-dir") || !strcmp(argv[i], "-a")) {
+                if (i + 1 < argc) setAssetDir(argv[++i]);
+            }
+            else if (!strcmp(argv[i], "--tick-ms")) {
+                if (i + 1 < argc) evTickDurationMs = atoi(argv[++i]);
+            }
+            else if (!strcmp(argv[i], "help") || !strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
                 usage();
             }
-            if (!strcmp(argv[i], "version")) {
+            else if (!strcmp(argv[i], "version") || !strcmp(argv[i], "--version")) {
                 version();
             }
             else if (!strcmp(argv[i], "dump")) {
@@ -146,6 +209,12 @@ static void parseArgs(int argc, char **argv)
 
     if (argDump + argBench + argTtm + argAds == 0)
         argPlayAll = 1;
+
+    const char *xscreenWin = getenv("XSCREENSAVER_WINDOW");
+    if (xscreenWin && *xscreenWin && !grWindowed) {
+        SDL_setenv("SDL_WINDOWID", xscreenWin, 1);
+        evScreensaverMode = 1;
+    }
 }
 
 
@@ -155,6 +224,24 @@ int main(int argc, char **argv)
 
     if (argDump)
         debugMode = 1;
+
+    if (!checkAssetsAvailable()) {
+#ifdef _WIN32
+        MessageBoxA(NULL,
+            "Johnny Castaway: Arquivos de recursos nao encontrados!\n\n"
+            "Coloque RESOURCE.MAP e RESOURCE.001 em:\n"
+            "%APPDATA%\\JohnnyCastaway\\ ou ao lado do arquivo .scr.",
+            "Johnny Castaway - Erro",
+            MB_OK | MB_ICONERROR);
+#else
+        fprintf(stderr,
+            "Error: RESOURCE.MAP not found.\n"
+            "Please provide RESOURCE.MAP and RESOURCE.001 in:\n"
+            "  - ~/.local/share/johnny-castaway/\n"
+            "  - or set JC_ASSETS_DIR=/path/to/assets\n");
+#endif
+        return 1;
+    }
 
     parseResourceFiles("RESOURCE.MAP");
 

@@ -29,6 +29,7 @@
 #include "utils.h"
 #include "resource.h"
 #include "uncompress.h"
+#include "respath.h"
 
 #define MAX_ADS_RESOURCES 100
 #define MAX_BMP_RESOURCES 200
@@ -342,11 +343,12 @@ static struct TTtmResource *parseTtmResource(FILE *f)
 static void parseMapFile(char *fileName)
 {
     FILE *f_map; // , *f_res;  // TODO
+    const char *resolved = resolveAssetPath(fileName);
 
-    f_map = fopen(fileName,"rb");
+    f_map = fopen(resolved, "rb");
 
     if (f_map == NULL)
-        fatalError("Resources map file not found: %s\n", fileName);
+        fatalError("Resources map file not found: %s (resolved from: %s)\n", resolved, fileName);
 
     mapFile.unknown1 = readUint8(f_map);   // first 5 uint8s unknown
     mapFile.unknown2 = readUint8(f_map);
@@ -373,11 +375,12 @@ static void parseMapFile(char *fileName)
 static void parseResourceFile(char * filename)
 {
     FILE *f;
+    const char *resolved = resolveAssetPath(mapFile.resFileName);
 
-    f = fopen(mapFile.resFileName,"rb");
+    f = fopen(resolved, "rb");
 
     if (f == NULL)
-        fatalError("Main resources file not found: %s\n", mapFile.resFileName);
+        fatalError("Main resources file not found: %s (resolved from: %s)\n", resolved, mapFile.resFileName);
 
     if (debugMode) {
         printf("Loading resources ");
