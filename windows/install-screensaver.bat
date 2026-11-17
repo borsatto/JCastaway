@@ -48,10 +48,13 @@ echo.
 if not exist "%APP_DATA%" mkdir "%APP_DATA%"
 
 if exist "%REPO_DIR%\original\RESOURCE.MAP" (
-    echo [*] Copiando RESOURCE.MAP e RESOURCE.001 para %APP_DATA%...
+    echo [*] Copiando RESOURCE.MAP, RESOURCE.001 e efeitos sonoros para %APP_DATA%...
     copy /Y "%REPO_DIR%\original\RESOURCE.MAP" "%APP_DATA%\" >nul
     copy /Y "%REPO_DIR%\original\RESOURCE.001" "%APP_DATA%\" >nul
-    echo [OK] Recursos instalados com sucesso!
+    if exist "%REPO_DIR%\original\sound0.wav" (
+        copy /Y "%REPO_DIR%\original\sound*.wav" "%APP_DATA%\" >nul
+    )
+    echo [OK] Recursos e audios instalados com sucesso!
 ) else if exist "%APP_DATA%\RESOURCE.MAP" (
     echo [OK] Recursos ja configurados em %APP_DATA%!
 ) else (

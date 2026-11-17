@@ -173,6 +173,12 @@ static void parseArgs(int argc, char **argv)
             else if (!strcmp(argv[i], "--no-xbrz")) {
                 grXbrzFactor = 1;
             }
+            else if (!strcmp(argv[i], "--wide") || !strcmp(argv[i], "-w") || !strcasecmp(argv[i], "/w")) {
+                grWidescreen = 1;
+            }
+            else if (!strcmp(argv[i], "--aspect") || !strcmp(argv[i], "--4:3")) {
+                grWidescreen = 0;
+            }
             else if (!strcmp(argv[i], "--smooth")) {
                 grSmoothFilter = 1;
             }

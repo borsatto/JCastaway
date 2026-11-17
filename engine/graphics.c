@@ -50,6 +50,7 @@ int grWindowed = 0;
 int grUpdateDelay = 0;
 int grSmoothFilter = 1;
 int grXbrzFactor = 3; // Default 3x xBRZ: 1920x1440 Full HD crisp upscaling
+int grWidescreen = 0; // 0 = 4:3 letterbox, 1 = 16:9 full widescreen stretch
 void *grParentHwnd = NULL;
 void (*jcFrameHook)(const uint8_t *rgbaPixels, int width, int height, int pitch) = NULL;
 volatile int jcEngineStopRequested = 0;
@@ -171,7 +172,9 @@ void graphicsInit()
         sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_SOFTWARE);
     }
     if (sdl_renderer != NULL) {
-        SDL_RenderSetLogicalSize(sdl_renderer, renderWidth, renderHeight);
+        if (!grWidescreen) {
+            SDL_RenderSetLogicalSize(sdl_renderer, renderWidth, renderHeight);
+        }
         sdl_texture = SDL_CreateTexture(sdl_renderer,
             SDL_PIXELFORMAT_ARGB8888,
             SDL_TEXTUREACCESS_STREAMING,
@@ -220,6 +223,21 @@ void grRefreshDisplay()
     }
     else if (sdl_window != NULL) {
         SDL_UpdateWindowSurface(sdl_window);
+    }
+}
+
+
+void grToggleWidescreen()
+{
+    grWidescreen = !grWidescreen;
+    if (sdl_renderer != NULL) {
+        if (grWidescreen) {
+            SDL_RenderSetLogicalSize(sdl_renderer, 0, 0);
+        } else {
+            int rw = 640 * (grXbrzFactor > 1 ? grXbrzFactor : 1);
+            int rh = 480 * (grXbrzFactor > 1 ? grXbrzFactor : 1);
+            SDL_RenderSetLogicalSize(sdl_renderer, rw, rh);
+        }
     }
 }
 

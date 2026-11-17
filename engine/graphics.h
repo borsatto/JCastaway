@@ -78,6 +78,7 @@ extern int grWindowed;
 extern int grUpdateDelay;
 extern int grSmoothFilter;
 extern int grXbrzFactor;
+extern int grWidescreen;
 extern void *grParentHwnd;
 extern void (*jcFrameHook)(const uint8_t *rgbaPixels, int width, int height, int pitch);
 extern volatile int jcEngineStopRequested;
@@ -87,6 +88,7 @@ void graphicsInit();
 void graphicsEnd();
 void grRefreshDisplay();
 void grToggleFullScreen();
+void grToggleWidescreen();
 void grUpdateDisplay(struct TTtmThread *ttmBackgroundThread,
                      struct TTtmThread *ttmThreads,
                      struct TTtmThread *ttmHolidayThreads);

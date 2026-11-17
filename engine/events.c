@@ -106,6 +106,10 @@ static void eventsProcessEvents()
                             maxSpeed = !maxSpeed;
                             break;
 
+                        case SDLK_w:
+                            grToggleWidescreen();
+                            break;
+
                         case SDLK_RETURN:
                             if (event.key.keysym.mod & KMOD_LALT) {
                                 grToggleFullScreen();
