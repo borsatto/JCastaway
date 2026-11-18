@@ -27,7 +27,7 @@ void adsReleaseIsland();
 void adsNoIsland();
 void adsPlay(char *adsName, uint16 adsTag);
 void adsPlayIntro();
-void adsPlayWalk();
+void adsPlayWalk(int fromSpot, int fromHdg, int toSpot, int toHdg);
 void adsPlaySingleTtm(char *ttmName);
 void adsPlayBench();  // TODO
 
